@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Семейeн въглероден тракер</title>
+  <meta name="description" content="Безплатно уеб приложение за проследяване на въглеродния отпечатък на домакинството." />
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#131a33; --panel-2:#0f1530; --text:#eef2ff; --muted:#bbc5ff; --accent:#7aa2ff; --positive:#38d39f; --warning:#ffcc66; --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(1200px 800px at 20% -10%,#1a245a 0%,#0d1433 40%,#070b1f 100%)}
+    a{color:var(--accent)}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7aa2ff, #38d39f);box-shadow:0 6px 20px rgba(122,162,255,.35)}
+    h1{font-size:20px;margin:0}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));backdrop-filter: blur(6px);border:1px solid rgba(122,162,255,.15);border-radius:16px;padding:16px}
+    .card h2{font-size:16px;margin:0 0 12px;color:#dce3ff}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 6px}
+    input,select,button,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(122,162,255,.2);background:rgba(10,14,34,.6);color:var(--text)}
+    input::placeholder,textarea::placeholder{color:#95a3ff}
+    button{cursor:pointer;background:linear-gradient(135deg,#7aa2ff,#38d39f);border:none;color:#07102a;font-weight:700}
+    button.ghost{background:transparent;border:1px dashed rgba(122,162,255,.45);color:#cfe0ff}
+    button.small{padding:8px 10px;border-radius:10px;font-size:12px}
+    .row{display:flex;gap:8px}
+    .row>*{flex:1}
+    .list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+    .item{display:flex;gap:10px;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid rgba(122,162,255,.15);padding:10px;border-radius:12px}
+    .pill{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(122,162,255,.15);color:#cfe0ff;border:1px solid rgba(122,162,255,.25)}
+    .muted{color:var(--muted);font-size:12px}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .kpi .card{padding:14px}
+    .kpi h3{margin:0;font-size:13px;color:#dce3ff}
+    .kpi .value{font-size:22px;font-weight:800;margin-top:6px}
+    .footer{margin:16px 0 0;color:#9BB0FF;font-size:12px}
+    .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(122,162,255,.3),transparent);margin:10px 0}
+    .right .card{height:100%}
+    .danger{color:var(--danger)}
+    .success{color:var(--positive)}
+    .notice{background:rgba(255,204,102,.14);border:1px solid rgba(255,204,102,.35);color:#ffe9b6;padding:10px;border-radius:12px;font-size:12px}
+    .checkbox{display:flex;align-items:center;gap:8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Семейeн въглероден тракер</h1>
+          <div class="muted">Проследявай емисиите CO₂e по месеци — електричество, транспорт, отопление и уреди.</div>
+        </div>
+      </div>
+      <div class="row" style="max-width:380px">
+        <button class="small ghost" id="exportBtn" title="Експорт на данните в JSON">Експорт</button>
+        <label for="importFile" class="small ghost" style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">Импорт <input id="importFile" type="file" accept="application/json" style="display:none"/></label>
+        <button class="small" id="resetBtn" title="Изтриване на всички данни">Нулирай</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <main class="left">
+        <section class="kpi">
+          <div class="card" aria-live="polite">
+            <h3>Общо емисии (месец)</h3>
+            <div class="value" id="totalKg">0 кг CO₂e</div>
+            <div class="muted" id="selectedMonthLabel"></div>
+          </div>
+          <div class="card">
+            <h3>Електричество</h3>
+            <div class="value" id="elKg">0 кг</div>
+            <div class="muted" id="elDetail">—</div>
+          </div>
+          <div class="card">
+            <h3>Транспорт</h3>
+            <div class="value" id="trKg">0 кг</div>
+            <div class="muted" id="trDetail">—</div>
+          </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="card">
+          <h2>Месец и домакинство</h2>
+          <div class="row">
+            <div>
+              <label>Месец</label>
+              <input type="month" id="month" />
+            </div>
+            <div>
+              <label>Членове на семейство (бр.)</label>
+              <input type="number" id="members" min="1" value="2"/>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="appliancesCard">
+          <h2>Електроуреди (изчисляване по мощност)</h2>
+          <div class="row">
+            <div>
+              <label>Уред</label>
+              <input id="applianceName" placeholder="напр. Пералня"/>
+            </div>
+            <div>
+              <label>Мощност (W)</label>
+              <input id="applianceW" type="number" placeholder="напр. 2000"/>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Часове/ден</label>
+              <input id="applianceHours" type="number" step="0.1" placeholder="напр. 0.5"/>
+            </div>
+            <div>
+              <label>Дни/месец</label>
+              <input id="applianceDays" type="number" placeholder="напр. 12"/>
+            </div>
+          </div>
+          <div class="row">
+            <button id="addAppliance">Добави уред</button>
+            <button class="ghost" id="clearAppliances">Изчисти списъка</button>
+          </div>
+          <div class="list" id="applianceList"></div>
+          <div class="muted" style="margin-top:6px">Алтернатива: въведи директно месечно потребление (kWh) в Настройки → Фактори/входове.</div>
+        </section>
+
+        <section class="card" id="transportCard">
+          <h2>Транспорт</h2>
+          <div class="row">
+            <div>
+              <label>Мод</label>
+              <select id="mode">
+                <option value="car_petrol">Автомобил (бензин)</option>
+                <option value="car_diesel">Автомобил (дизел)</option>
+                <option value="bus">Автобус</option>
+                <option value="train">Влак</option>
+                <option value="metro">Метро/трамвай</option>
+              </select>
+            </div>
+            <div>
+              <label>Разстояние (км/месец)</label>
+              <input id="distance" type="number" placeholder="напр. 500"/>
+            </div>
+          </div>
+          <div class="row">
+            <button id="addTrip">Добави</button>
+            <button class="ghost" id="clearTrips">Изчисти транспорта</button>
+          </div>
+          <div class="list" id="tripList"></div>
+        </section>
+
+        <section class="card" id="heatingCard">
+          <h2>Отопление</h2>
+          <div class="row">
+            <div>
+              <label>Енергия (kWh/месец) или еквивалент*</label>
+              <input id="heatKwh" type="number" placeholder="напр. 800"/>
+            </div>
+            <div>
+              <label>Бележка</label>
+              <input id="heatNote" placeholder="напр. Климатик/пелети/газ"/>
+            </div>
+          </div>
+          <div class="muted">* Ако ползваш газ, пелети или дърва – конвертирай приблизително в kWh и настрой фактора по-долу.</div>
+        </section>
+      </main>
+
+      <aside class="right">
+        <section class="card">
+          <h2>Настройки → Фактори и входове</h2>
+          <div class="notice" style="margin-bottom:10px">Стойностите са приблизителни и зависят от страната/енергийния микс. По желание ги коригирай за България.</div>
+          <label>Фактор на мрежата за електричество (кг CO₂e / kWh)</label>
+          <input id="factorGrid" type="number" step="0.01" value="0.35"/>
+
+          <label>Месечно електропотребление (kWh) – ако го знаеш от фактура</label>
+          <input id="directKwh" type="number" placeholder="напр. 250"/>
+
+          <div class="row">
+            <div>
+              <label>Автомобил (бензин) – кг/км</label>
+              <input id="f_car_petrol" type="number" step="0.001" value="0.192"/>
+            </div>
+            <div>
+              <label>Автомобил (дизел) – кг/км</label>
+              <input id="f_car_diesel" type="number" step="0.001" value="0.171"/>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Автобус – кг/пътник-км</label>
+              <input id="f_bus" type="number" step="0.001" value="0.105"/>
+            </div>
+            <div>
+              <label>Влак/метро – кг/пътник-км</label>
+              <input id="f_train" type="number" step="0.001" value="0.041"/>
+            </div>
+          </div>
+
+          <label>Отопление – фактор (кг CO₂e / kWh)</label>
+          <input id="factorHeat" type="number" step="0.01" value="0.25"/>
+
+          <div class="divider"></div>
+          <div class="checkbox">
+            <input id="perCapita" type="checkbox"/> <label for="perCapita" style="margin:0">Покажи и на човек (пер капита)</label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Разбивка и бележки</h2>
+          <div id="breakdown"></div>
+          <div class="divider"></div>
+          <textarea id="notes" rows="6" placeholder="Бележки за този месец – промени, нови уреди, пътувания…"></textarea>
+        </section>
+      </aside>
+    </div>
+
+    <div class="footer">Съвет: Запази тази страница локално (File → Save As) или я хостни в GitHub Pages, за да я използваш на телефон. Всички данни се пазят само в твоят браузър (localStorage).</div>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const state = {
+    month: new Date().toISOString().slice(0,7),
+    members: 2,
+    appliances: [], // {name,w,h,d}
+    trips: [], // {mode,km}
+    heatKwh: 0,
+    heatNote: '',
+    factors: {
+      grid: 0.35,
+      car_petrol: 0.192,
+      car_diesel: 0.171,
+      bus: 0.105,
+      train: 0.041,
+      metro: 0.041,
+      heat: 0.25
+    },
+    directKwh: null,
+    perCapita: false,
+    notes: ''
+  };
+
+  // Load
+  const saved = JSON.parse(localStorage.getItem('carbon-tracker-v1')||'null');
+  if(saved){Object.assign(state, saved)}
+
+  // Bind UI initial
+  $('month').value = state.month;
+  $('members').value = state.members;
+  $('heatKwh').value = state.heatKwh||'';
+  $('heatNote').value = state.heatNote||'';
+  $('factorGrid').value = state.factors.grid;
+  $('f_car_petrol').value = state.factors.car_petrol;
+  $('f_car_diesel').value = state.factors.car_diesel;
+  $('f_bus').value = state.factors.bus;
+  $('f_train').value = state.factors.train;
+  $('factorHeat').value = state.factors.heat;
+  $('directKwh').value = state.directKwh ?? '';
+  $('perCapita').checked = !!state.perCapita;
+  $('notes').value = state.notes || '';
+
+  const save = ()=>localStorage.setItem('carbon-tracker-v1', JSON.stringify(state));
+
+  // Helpers
+  const fmt = (x)=> new Intl.NumberFormat('bg-BG',{maximumFractionDigits:1}).format(x);
+  const monthLabel = (ym)=>{
+    const [y,m]=ym.split('-');
+    const d = new Date(parseInt(y), parseInt(m)-1, 1);
+    return d.toLocaleDateString('bg-BG',{month:'long', year:'numeric'});
+  };
+
+  // Render lists
+  function renderAppliances(){
+    const list = $('applianceList');
+    list.innerHTML = '';
+    if(!state.appliances.length){ list.innerHTML = '<div class="muted">Няма добавени уреди.</div>'; return; }
+    state.appliances.forEach((a,i)=>{
+      const kwh = a.w * (a.h||0) * (a.d||0) / 1000; // Wh -> kWh за месеца
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div>
+          <div><strong>${a.name||'Уред'}</strong> <span class="pill">${a.w} W</span></div>
+          <div class="muted">${a.h} ч/ден × ${a.d} дни → ${fmt(kwh)} kWh/месец</div>
+        </div>
+        <div class="row" style="max-width:160px">
+          <button class="small ghost" data-edit="${i}">Редактирай</button>
+          <button class="small" data-del="${i}">Премахни</button>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function renderTrips(){
+    const list = $('tripList');
+    list.innerHTML = '';
+    if(!state.trips.length){ list.innerHTML = '<div class="muted">Няма добавени пътувания.</div>'; return; }
+    state.trips.forEach((t,i)=>{
+      const el = document.createElement('div');
+      el.className = 'item';
+      const label = ({car_petrol:'Авто бензин',car_diesel:'Авто дизел',bus:'Автобус',train:'Влак',metro:'Метро'})[t.mode]||t.mode;
+      el.innerHTML = `
+        <div>
+          <div><strong>${label}</strong> <span class="pill">${fmt(t.km)} км</span></div>
+          <div class="muted">фактор: ${state.factors[t.mode]??'?'} кг/км</div>
+        </div>
+        <div class="row" style="max-width:160px">
+          <button class="small ghost" data-edit-trip="${i}">Редактирай</button>
+          <button class="small" data-del-trip="${i}">Премахни</button>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function compute(){
+    const members = Math.max(1, Number($('members').value)||state.members);
+    state.members = members;
+
+    const grid = Number($('factorGrid').value)||state.factors.grid; state.factors.grid=grid;
+    const heatF = Number($('factorHeat').value)||state.factors.heat; state.factors.heat=heatF;
+
+    // Electricity from appliances
+    let kwhFromAppliances = state.appliances.reduce((sum,a)=> sum + (a.w * (a.h||0) * (a.d||0))/1000, 0);
+
+    // Direct kWh overrides appliances if provided
+    const direct = $('directKwh').value!=='' ? Number($('directKwh').value) : null;
+    state.directKwh = direct;
+    const elKwh = (direct ?? kwhFromAppliances);
+    const elKg = elKwh * grid;
+
+    $('elKg').textContent = fmt(elKg) + ' кг';
+    $('elDetail').textContent = (direct!=null ? `${fmt(elKwh)} kWh по фактура × ${grid} кг/kWh` : `${fmt(kwhFromAppliances)} kWh от уреди × ${grid} кг/kWh`);
+
+    // Transport
+    const f = state.factors;
+    const trKg = state.trips.reduce((sum,t)=> sum + (t.km * (f[t.mode]||0)), 0);
+
+    $('trKg').textContent = fmt(trKg) + ' кг';
+    $('trDetail').textContent = state.trips.length ? `${state.trips.length} записа, общо ${fmt(state.trips.reduce((s,t)=>s+t.km,0))} км` : '—';
+
+    // Heating
+    const heatKwh = Number($('heatKwh').value)||0; state.heatKwh = heatKwh; state.heatNote=$('heatNote').value||'';
+    const heatKg = heatKwh * heatF;
+
+    // Total
+    let total = elKg + trKg + heatKg;
+    const perCapita = $('perCapita').checked; state.perCapita = perCapita;
+    const divisor = perCapita ? Math.max(1, members) : 1;
+
+    $('totalKg').textContent = `${fmt(total/divisor)} кг CO₂e${perCapita?' / човек':''}`;
+    $('selectedMonthLabel').textContent = `${monthLabel(state.month)} • Членове: ${members}`;
+
+    // Breakdown
+    const breakdown = $('breakdown');
+    breakdown.innerHTML = `
+      <div class="item"><div>Електричество</div><div><strong>${fmt(elKg/divisor)}</strong> кг</div></div>
+      <div class="item"><div>Транспорт</div><div><strong>${fmt(trKg/divisor)}</strong> кг</div></div>
+      <div class="item"><div>Отопление ${state.heatNote?`<span class='pill'>${state.heatNote}</span>`:''}</div><div><strong>${fmt(heatKg/divisor)}</strong> кг</div></div>
+    `;
+
+    save();
+  }
+
+  // Events
+  $('month').addEventListener('change', e=>{ state.month = e.target.value; compute(); });
+  $('members').addEventListener('input', compute);
+  $('factorGrid').addEventListener('input', compute);
+  $('factorHeat').addEventListener('input', compute);
+  $('directKwh').addEventListener('input', compute);
+  $('heatKwh').addEventListener('input', compute);
+  $('heatNote').addEventListener('input', compute);
+  $('perCapita').addEventListener('change', compute);
+
+  ;['f_car_petrol','f_car_diesel','f_bus','f_train'].forEach(id=>{
+    $(id).addEventListener('input', e=>{ const key = id.replace('f_',''); state.factors[key]=Number(e.target.value)||0; compute(); })
+  });
+
+  $('addAppliance').addEventListener('click', ()=>{
+    const name = $('applianceName').value.trim();
+    const w = Number($('applianceW').value);
+    const h = Number($('applianceHours').value);
+    const d = Number($('applianceDays').value);
+    if(!name || !(w>0) || !(h>0) || !(d>0)) return alert('Попълни всички полета за уреда.');
+    state.appliances.push({name,w,h,d});
+    $('applianceName').value=''; $('applianceW').value=''; $('applianceHours').value=''; $('applianceDays').value='';
+    renderAppliances(); compute();
+  });
+
+  $('applianceList').addEventListener('click', (e)=>{
+    const del = e.target.getAttribute('data-del');
+    const edit = e.target.getAttribute('data-edit');
+    if(del!=null){ state.appliances.splice(Number(del),1); renderAppliances(); compute(); }
+    if(edit!=null){
+      const i = Number(edit); const a = state.appliances[i];
+      const name = prompt('Име на уред', a.name)||a.name;
+      const w = Number(prompt('Мощност (W)', a.w))||a.w;
+      const h = Number(prompt('Часове/ден', a.h))||a.h;
+      const d = Number(prompt('Дни/месец', a.d))||a.d;
+      state.appliances[i] = {name,w,h,d}; renderAppliances(); compute();
+    }
+  });
+
+  $('clearAppliances').addEventListener('click', ()=>{
+    if(confirm('Да изчистя ли всички уреди?')){ state.appliances = []; renderAppliances(); compute(); }
+  });
+
+  $('addTrip').addEventListener('click', ()=>{
+    const mode = $('mode').value; const km = Number($('distance').value);
+    if(!(km>0)) return alert('Въведи километри.');
+    state.trips.push({mode, km});
+    $('distance').value=''; renderTrips(); compute();
+  });
+
+  $('tripList').addEventListener('click', (e)=>{
+    const del = e.target.getAttribute('data-del-trip');
+    const edit = e.target.getAttribute('data-edit-trip');
+    if(del!=null){ state.trips.splice(Number(del),1); renderTrips(); compute(); }
+    if(edit!=null){
+      const i = Number(edit); const t = state.trips[i];
+      const km = Number(prompt('Километри', t.km))||t.km; const mode = prompt('Мод (car_petrol, car_diesel, bus, train, metro)', t.mode)||t.mode;
+      state.trips[i] = {mode, km}; renderTrips(); compute();
+    }
+  });
+
+  $('clearTrips').addEventListener('click', ()=>{
+    if(confirm('Да изчистя ли всички пътувания?')){ state.trips = []; renderTrips(); compute(); }
+  });
+
+  $('notes').addEventListener('input', (e)=>{ state.notes = e.target.value; save(); });
+
+  $('exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'carbon-tracker.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  $('importFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
+    reader.onload = ()=>{ try{ const data = JSON.parse(reader.result); Object.assign(state, data); localStorage.setItem('carbon-tracker-v1', JSON.stringify(state)); location.reload(); }catch(err){ alert('Невалиден файл.'); } };
+    reader.readAsText(file);
+  });
+
+  $('resetBtn').addEventListener('click', ()=>{
+    if(confirm('Това ще изтрие всички данни. Сигурни ли сте?')){ localStorage.removeItem('carbon-tracker-v1'); location.reload(); }
+  });
+
+  // Initial render
+  renderAppliances(); renderTrips(); compute();
+})();
+</script>
+
+<script>
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
