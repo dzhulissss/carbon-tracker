@@ -1,9 +1,5 @@
-const CACHE = 'carbon-tracker-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest'
-];
+const CACHE = 'carbon-tracker-pro-v1';
+const ASSETS = ['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install', (e)=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
